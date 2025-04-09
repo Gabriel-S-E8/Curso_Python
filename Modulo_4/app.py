@@ -59,7 +59,7 @@ def login():
 
     if username and password:
         user = User.query.filter_by(username=username).first()
-        
+
         if user and user.password == password:
             login_user(user)
             print(current_user.is_authenticated)
@@ -87,7 +87,10 @@ def create_user():
         # Verifica se o username já existe
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
-            return jsonify({"message": "O username já está em uso. Escolha outro."}), 400
+            return (
+                jsonify({"message": "O username já está em uso. Escolha outro."}),
+                400,
+            )
 
         # Se não existe, cria o novo usuário
         user = User(username=username, password=password)
@@ -97,9 +100,56 @@ def create_user():
             return jsonify({"message": "Usuário cadastrado com sucesso"})
         except IntegrityError:
             db.session.rollback()  # Reverte a sessão em caso de erro
-            return jsonify({"message": "Erro ao criar usuário. O username já existe."}), 400
+            return (
+                jsonify({"message": "Erro ao criar usuário. O username já existe."}),
+                400,
+            )
 
     return jsonify({"message": "Dados inválidos"}), 400
+
+
+@app.route("/user/<int:id_user>", methods=["GET"])
+@login_required
+def read_user(id_user):
+    user = User.query.get(id_user)
+
+    if user:
+        return {"username": user.username}
+
+    return jsonify({"message": "Usuario não encontrado"}), 404
+
+
+@app.route("/user/<int:id_user>", methods=["PUT"])
+@login_required
+def update_user(id_user):
+    data = request.json
+    user = User.query.get(id_user)
+
+    if user and data.get("password"):
+        user.password = data.get("password")
+        db.session.commit()
+
+        return jsonify({"message": f"Senha do Usuário {id_user} atualizado com sucesso"})
+    
+    # não é recomendado mudar o username desse jeito pelo menos pois pode gerar erro de validação precisando fazer o login novamente.
+    if user and data.get("username"):
+        user.username = data.get("username")
+        db.session.commit()
+
+        return jsonify({"message": f"Username do Usuário {id_user} atualizado com sucesso"})
+
+    return jsonify({"message": "Usuario não encontrado"}), 404
+
+
+@app.route("/user/<int:id_user>", methods=["DELETE"])
+@login_required
+def delete_user(id_user):
+    user = User.query.get(id_user)
+
+    if user:
+        return jsonify({"message": f"Usuário {id_user} deletado com sucesso"})
+
+    return jsonify({"message": "Usuario não encontrado"}), 404
 
 
 @app.route("/hello-world", methods=["GET"])
