@@ -125,20 +125,31 @@ def update_user(id_user):
     data = request.json
     user = User.query.get(id_user)
 
-    if user and data.get("password"):
-        user.password = data.get("password")
-        db.session.commit()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
 
-        return jsonify({"message": f"Senha do Usuário {id_user} atualizado com sucesso"})
+    updates = {
+        "password": data.get("password"),
+        "username": data.get("username")
+    }
+
+    messages = []
+    for field, value in updates.items():
+        if value:
+            setattr(user, field, value)
+            messages.append(f"✅ {field.capitalize()} do usuário {id_user} atualizado com sucesso")
+
+    if messages:
+        db.session.commit()
+        return jsonify({
+            "status": "success",
+            "updates": messages
+        })
     
-    # não é recomendado mudar o username desse jeito pelo menos pois pode gerar erro de validação precisando fazer o login novamente.
-    if user and data.get("username"):
-        user.username = data.get("username")
-        db.session.commit()
-
-        return jsonify({"message": f"Username do Usuário {id_user} atualizado com sucesso"})
-
-    return jsonify({"message": "Usuario não encontrado"}), 404
+    return jsonify({
+        "status": "error",
+        "message": "Nenhum dado válido fornecido para atualização"
+    }), 400
 
 
 @app.route("/user/<int:id_user>", methods=["DELETE"])
